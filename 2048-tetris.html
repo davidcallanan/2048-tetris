@@ -1,0 +1,1044 @@
+<canvas id="canvas" style="width: 360px; height: 720px; display: inline-block; vertical-align: middle;" width="720" height="1440">
+
+</canvas>
+
+<div class="info" style="background: #ddd; font-family: Tahoma; width: 200px; padding: 20px; padding-top: 0px; height: 520px; display: inline-block; border: 4px solid #bbb; vertical-align: middle;">
+	<h2> Score </h2>
+	<h1 id="score-val">0</h1>
+	<hr>
+	<p style="font-size: 0.75rem;">
+		Left and right to move.<br><br>
+		Up to rotate (or Z/X).<br><br>
+		Down arrow to drop.<br><br>
+		Ctrl/space/shift+down to insta-drop.<br><br>
+		P to pause/unpause.<br>
+	</p>
+	<hr>
+	<p style="font-size: 0.5rem;">
+		Tiles can merge under certain circumstances if numbers match up.<br><br>
+		When your piece collides, it can merge in up to 1 level deep.<br><br>
+		If it fails to merge (not all required tiles match up), then it just sticks/attaches on top.<br><br>
+		When a row is filled it will become a merger row, unless it is already a merger row in which case the row above it becomes a merger row.<br><br>
+		If the bottom row is filled, then it is always the row above that becomes the merger row.<br><br>
+		Each tile on a merger row will individually be pushed down to the row below, and tiles above it will follow. If the tile it pushes into matches up, they will merge. If the two tiles do not match up, the tile being pushed into will wrap around and appear at the top of the column, but only if the number being pushed into is smaller. Larger numbers will remain fixed in place and will prevent any of the movement.
+	</p>
+</div>
+
+<div style="display: inline-block;">
+	<b style="font-family: Tahoma; font-size: 0.75rem; margin-bottom: 0.25rem; display: inline-block;">Dark mode</b><br>
+	<label class="switch">
+		<input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this);">
+		<span class="slider round"></span>
+	</label>
+</div>
+
+<style>
+	/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+</style>
+
+<h3 id="pause_status"></h3>
+
+<script>
+
+	const W = 10;
+	const H = 20;
+	const SW = 360 * 2;
+	const SH = 720 * 2;
+	const TILE_SIZE = 36 * 2;
+	const TILE_GAP = 3 * 2;
+	const FONT_SIZE = 18 * 2;
+
+	let step_interval = 1000;
+
+	let rndArr = (arr) => {
+		return arr[Math.floor(Math.random() * arr.length)];
+	}
+
+	let score = 0;
+
+	let inc_score = (amount) => {
+		score += amount;
+		document.querySelector("#score-val").innerText = score;
+	};
+
+	let bag;
+
+	let refresh_bag = () => {
+		let options = new Set(["straight", "square", "T", "L1", "L2", "skew1", "skew2"]);
+		bag = new Set();
+
+		for (let i = 0; i < options.size; i++) {
+			let type = rndArr(Array.from(options));
+			bag.add(type);
+			options.delete(type);
+		}
+	};
+
+	refresh_bag();
+
+	class Shape {
+		constructor() {
+			if (bag.size == 0) {
+				refresh_bag();
+			}
+			this.type = rndArr(Array.from(bag));
+			bag.delete(this.type);
+			this.x = 0;
+			this.y = 0;
+			this.rotation = Math.floor(Math.random() * 4);
+			this.tiles = [];
+
+			this.createTiles();
+
+			let width = Math.max(...this.tiles.map(tile => tile.x)) - Math.min(...this.tiles.map(tile => tile.x)) + 1;
+			this.x = Math.floor(Math.random() * (W + 1 - width));
+			this.x = rndArr([Math.floor, Math.ceil])((W - width) / 2);
+		}
+
+		createTiles() {
+			this.tiles = [];
+
+			switch (this.type) {
+				case "straight":
+					if (this.rotation == 0) {
+						this.tiles = [
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 3, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 1) {
+						this.tiles = [
+							{ x: 2, y: 0, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 2, y: 2, value: 2 },
+							{ x: 2, y: 3, value: 2 },
+						];
+					} else if (this.rotation == 2) {
+						this.tiles = [
+							{ x: 0, y: 2, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 2, y: 2, value: 2 },
+							{ x: 3, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 3) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 1, y: 3, value: 2 },
+						];
+					}
+				break;
+				case "square":
+					this.tiles = [
+						{ x: 0, y: 0, value: 2 },
+						{ x: 1, y: 0, value: 2 },
+						{ x: 0, y: 1, value: 2 },
+						{ x: 1, y: 1, value: 2 },
+					];
+				break;
+				case "T":
+					if (this.rotation == 0) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 1) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 2) {
+						this.tiles = [
+							{ x: 1, y: 2, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 3) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+						];
+					}
+				break;
+				case "L1":
+					if (this.rotation == 0) {
+						this.tiles = [
+							{ x: 0, y: 0, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 1) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 2, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 2) {
+						this.tiles = [
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 2, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 3) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 0, y: 2, value: 2 },
+						];
+					}
+				break;
+				case "L2":
+					if (this.rotation == 0) {
+						this.tiles = [
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 2, y: 0, value: 2 },
+						];
+					} else if (this.rotation == 1) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 2, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 2) {
+						this.tiles = [
+							{ x: 0, y: 1, value: 2 },
+							{ x: 0, y: 2, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 3) {
+						this.tiles = [
+							{ x: 0, y: 0, value: 2 },
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+						];
+					}
+				break;
+				case "skew1":
+					if (this.rotation == 0) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 2, y: 0, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 1) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 2, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 2) {
+						this.tiles = [
+							{ x: 1, y: 1, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 0, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 3) {
+						this.tiles = [
+							{ x: 0, y: 0, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+						];
+					}
+				break;
+				case "skew2":
+					if (this.rotation == 0) {
+						this.tiles = [
+							{ x: 0, y: 0, value: 2 },
+							{ x: 1, y: 0, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+						];
+					} else if (this.rotation == 1) {
+						this.tiles = [
+							{ x: 2, y: 0, value: 2 },
+							{ x: 2, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 2) {
+						this.tiles = [
+							{ x: 0, y: 1, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 1, y: 2, value: 2 },
+							{ x: 2, y: 2, value: 2 },
+						];
+					} else if (this.rotation == 3) {
+						this.tiles = [
+							{ x: 1, y: 0, value: 2 },
+							{ x: 1, y: 1, value: 2 },
+							{ x: 0, y: 1, value: 2 },
+							{ x: 0, y: 2, value: 2 },
+						];
+					}
+				break;
+			}
+		}
+
+		drawbg() {
+			let left = this.getLeftX() * TILE_SIZE;
+			let right = (this.getRightX() + 1) * TILE_SIZE;
+
+			if (darkMode) {
+				ctx.fillStyle = "rgb(50, 0, 0)";				
+			} else {
+				ctx.fillStyle = "rgb(175 187 160)";
+			}
+
+			ctx.fillRect(left, 0, right - left, SH);
+		}
+
+		draw() {
+			let left = this.getLeftX() * TILE_SIZE;
+			let right = (this.getRightX() + 1) * TILE_SIZE;
+
+			ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+			ctx.lineWidth = 5;
+			
+			ctx.beginPath();
+			ctx.moveTo(left, 0);
+			ctx.lineTo(left, SH);
+			ctx.stroke();
+
+			ctx.beginPath();
+			ctx.moveTo(right, 0);
+			ctx.lineTo(right, SH);
+			ctx.stroke();
+
+			for (let tile of this.tiles) {
+				draw_tile(tile.value, this.x + tile.x, this.y + tile.y, "purple");
+			}
+		}
+
+		step() {
+			this.y++;
+		}
+		
+		offscreen() {
+			return this.getLeftX() < 0 || this.getRightX() > W - 1;
+		}
+
+		moveLeft() {
+			this.x--;
+			if (this.offscreen()) {
+				this.x++;
+				return;
+			}
+			if (this.checkCanMerge()) {
+				stepImmediately();
+				return;	
+			}
+			if (!this.checkOK()) {
+				this.x++;
+			}
+		}
+
+		moveRight() {
+			this.x++;
+			if (this.offscreen()) {
+				this.x--;
+				return;
+			}
+			if (this.checkCanMerge()) {
+				stepImmediately();
+				return;
+			}
+			if (!this.checkOK()) {
+				this.x--;
+			}
+		}
+
+		checkOK() {
+			for (let tile of this.tiles) {
+				let x = this.x + tile.x;
+				let y = this.y + tile.y;
+
+				if (x < 0 || x > W - 1) {
+					return false;
+				}
+
+				if (grid[x][y]) {
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		checkCanMerge() {
+			let involvesMerging = false;
+			let okToMerge = true;
+
+			for (let tile of this.tiles) {	
+				let x = this.x + tile.x;
+				let y = this.y + tile.y;
+				
+				if (grid[x][y]) {
+					involvesMerging = true;
+					if (grid[x][y] != tile.value) {
+						okToMerge = false;
+						break;
+					}
+				}
+			}
+
+			return involvesMerging && okToMerge;
+		}
+
+		shouldConvert() {
+			if (this.checkCanMerge()) {
+				return true;
+			}
+
+			for (let tile of this.tiles) {
+				let x = this.x + tile.x;
+				let y = this.y + tile.y;
+
+				if (y == H - 1) {
+					return true;
+				}
+
+				if (x < 0 || x > W - 1) {
+					return true;
+				}
+
+				if (grid[x][y] || grid[x][y + 1]) {
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+		convertIfNeeded() {
+			if (this.shouldConvert()) {
+				if (!this.checkCanMerge()) {
+					for (let tile of this.tiles) {
+						let x = this.x + tile.x;
+						let y = this.y + tile.y;
+	
+						grid[x][y] = tile.value;
+					}
+				}
+				
+				return true;
+			}
+
+			return false;
+		}
+
+		significantStepsAfterConversion() {
+			let xs = [];
+
+			let bottomTiles = {};
+
+			for (let tile of this.tiles) {
+				let x = tile.x + this.x;
+				bottomTiles[x] = bottomTiles[x] || tile;
+				if (tile.y > bottomTiles[x].y) {
+					bottomTiles[x] = tile;
+				}
+			}
+
+			let canDoSignificantStep = true;
+
+			for (let x in bottomTiles) {
+				let tile = bottomTiles[x];
+
+				if (tile.y + this.y + 1 > H - 1) {
+					canDoSignificantStep = false;
+					break;
+				}
+
+				if (grid[x][tile.y + this.y + 1] && grid[x][tile.y + this.y + 1] != tile.value) {
+					canDoSignificantStep = false;
+					break;
+				}
+			}
+
+			if (canDoSignificantStep) {
+				for (let x in bottomTiles) {
+					let ground = Math.min(bottomTiles[x].y + 1 + this.y, H - 1);
+					xs.push([Number(x), ground]);
+				}
+			}
+
+			return xs;
+		}
+
+		rotateRight() {
+			this.rotation++;
+			this.rotation = ((this.rotation % 4) + 4) % 4;
+			this.createTiles();
+			if (!this.checkOK()) {
+				this.x++;
+				if (!this.checkOK()) {
+					this.x--;
+					this.x--;
+					if (!this.checkOK()) {
+						this.x++;
+						this.rotateLeft();
+					}
+				}
+			}
+		}
+
+		rotateLeft() {
+			this.rotation--;
+			this.rotation = ((this.rotation % 4) + 4) % 4;
+			this.createTiles();
+			if (!this.checkOK()) {
+				this.x++;
+				if (!this.checkOK()) {
+					this.x--;
+					this.x--;
+					if (!this.checkOK()) {
+						this.x++
+						this.rotateRight();
+					}
+				}
+			}
+		}
+
+		getLeftX() {
+			return Math.min(...this.tiles.map(tile => tile.x + this.x));
+		}
+
+		getRightX() {
+			return Math.max(...this.tiles.map(tile => tile.x + this.x));
+		}
+	}
+
+	let draw_tile = (tile, x, y, background) => {
+		if (background) {
+			ctx.fillStyle = background;
+			ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+		}
+		ctx.fillStyle = ({
+			2: "#eee4da",
+			4: "#ede0c8",
+			8: "#F2B179",
+			16: "#F59565",
+			32: "#F67C5F",
+			64: "#F65E3B",
+			128: "#EDCF72",
+			256: "#EDCC61",
+			512: "#EDC850",
+			1024: "#EDC53F",
+			2048: "#EDC22E",
+			4096: "#3C3A32",
+		})[tile];
+		ctx.fillRect(x * TILE_SIZE + TILE_GAP, y * TILE_SIZE + TILE_GAP, TILE_SIZE - TILE_GAP * 2, TILE_SIZE - TILE_GAP * 2);
+		ctx.fillStyle = "white";
+		if (tile == 2) {
+			ctx.fillStyle = "#776E65";
+		} else if (tile == 4) {
+			ctx.fillStyle = "#776E65";
+		}
+		ctx.font = `${FONT_SIZE}px Helvetica`;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText(tile, x * TILE_SIZE + TILE_SIZE / 2, y * TILE_SIZE + TILE_SIZE / 2, TILE_SIZE, TILE_SIZE);
+	};
+
+	let canvas;
+	let ctx;
+
+	let grid = [];
+	let shapes = [];
+
+	let detect_conversion = false;
+
+	shapes.push(new Shape());
+
+	for (let i = 0; i < W; i++) {
+		grid[i] = [];
+
+		for (let u = 0; u < H; u++) {
+			grid[i][u] = undefined;
+		}
+	}
+
+	let stepTimeout;
+
+	let stepImmediately = () => {
+		if (stepTimeout) {
+			clearInterval(stepTimeout);
+		}
+		step();
+	};
+
+	let main = () => {
+		canvas = document.getElementById("canvas");
+		ctx = canvas.getContext("2d");
+		window.requestAnimationFrame(loop);
+		stepTimeout = setTimeout(step, step_interval);
+	};
+
+	let highlightedRows = new Map();
+
+	let loop = () => {
+		if (darkMode) {
+			ctx.fillStyle = "#776A60"
+			ctx.fillStyle = "#123456"
+		} else {
+			ctx.fillStyle = "#BBADA0";
+		}
+
+		ctx.fillRect(0, 0, SW, SH);
+		
+		for (let shape of shapes) {
+			shape.drawbg();
+		}
+		
+		for (let row of highlightedRows.keys()) {
+			ctx.fillStyle = "rgb(205, 142, 26)";
+			ctx.fillRect(0, TILE_SIZE * row + TILE_SIZE / 2, SW, TILE_SIZE);
+		}
+		
+		for (let i = 0; i < W; i++) {
+			for (let u = 0; u < H; u++) {
+				let tile = grid[i][u];
+				
+				if (tile) {
+					draw_tile(tile, i, u);
+				}
+			}
+		}
+
+		for (let shape of shapes) {
+			shape.draw();
+		}
+
+		window.requestAnimationFrame(loop);
+	};
+
+	let makeNewShape = false;
+
+	let gameOver = false;
+	let gameReallyOver = false;
+
+	let num_rows = () => {
+		let top = 0;
+
+		for (let y = 0; y < H; y++) {
+			let hasAnything = false;
+
+			for (let x = 0; x < W; x++) {
+				if (grid[x][y]) {
+					hasAnything = true;
+					break;
+				}
+			}
+
+			if (hasAnything) {
+				break;
+			}
+
+			top++;
+		}
+
+		return H - top;
+	};
+
+	let val_req = (y) => {
+		let rows = num_rows();
+		let height = H - y;
+		let downness = rows - height + 1;
+		return Math.pow(2, downness);
+	};
+
+	let detect_conversion_next_frame = false;
+
+	let step = () => {
+		if (gameOver) {
+			return;
+		}
+
+		if (detect_conversion_next_frame) {
+			detect_conversion = false;
+			detect_conversion_next_frame = false;
+		}
+
+		step_interval *= 0.998;
+
+		let shapesToDestroy = [];
+
+		let significantStepsToDo = [];
+
+		let mergeInShape = false;
+		let sh;
+		
+		for (let shape of shapes) {
+			let cm = shape.checkCanMerge();
+			let shouldDestroy = shape.convertIfNeeded();
+			if (shouldDestroy) {
+				if (cm) {
+					mergeInShape = true;
+					sh = shape;
+				} else {
+					significantStepsToDo = shape.significantStepsAfterConversion();
+				}
+				shapesToDestroy.push(shape);
+				makeNewShape = true;
+				detect_conversion = true;
+			}
+		}
+
+		shapes = shapes.filter(shape => !shapesToDestroy.includes(shape));
+
+		let anythingMoved = false;
+
+		if (!mergeInShape) {
+			let wasLastRowFull = false;
+
+			for (let whi = H - 1; whi >= 0; whi--) {
+				let isRowFull = true;
+	
+				for (let ex = 0; ex < W; ex++) {
+					if (!grid[ex][whi]) {
+						isRowFull = false;
+					}
+				}
+	
+				if (isRowFull) {
+					whi++;
+					let foo = ((whi > H - 1) || (wasLastRowFull)) ? whi - 2 : whi - 1;
+					highlightedRows.set(foo, (highlightedRows.get(foo) || 0) + 1);
+					whi--;
+	
+					setTimeout(() => {
+						highlightedRows.set(foo, (highlightedRows.get(foo) || 0) - 1);
+						if (highlightedRows.get(foo) <= 0) {
+							highlightedRows.delete(foo);
+						}
+					}, 1050);
+	
+					let dontDoCertainStuff = false;
+	
+					let ychanged = false;
+					if (whi < H - 1) {
+						whi++;
+						ychanged = true;
+					} else {
+						whi++;
+						ychanged = true;
+					}
+
+					let stuffhappened = false;
+	
+					if (!dontDoCertainStuff) {
+						let foo = (whi) => {
+							for (let x = 0; x < W; x++) {
+								let toSave;
+								for (let y = whi; y >= 0; y--) {
+									if (y == whi) {
+										if (grid[x][y]) {
+											if (grid[x][y] === grid[x][y - 1]) {
+												inc_score(grid[x][y] * 5);
+												grid[x][y] *= 2;
+											} else if (grid[x][y] < grid[x][y - 1]) {
+												toSave = grid[x][y];
+												grid[x][y] = grid[x][y - 1];
+											} else {
+												break;
+											}
+										} else {
+											grid[x][y] = grid[x][y - 1];
+										}
+									} else {
+										grid[x][y] = grid[x][y - 1];
+									}
+								}
+
+								if (toSave) {
+									for (let y = 0; y <= H; y++) {
+										if ((y == H || grid[x][y]) && y > 0) {
+											grid[x][y - 1] = toSave;
+											break;
+										}
+									}
+								}
+
+							}
+						};
+
+						if (whi > H - 1) {
+							foo(whi - 1);
+						} else if (wasLastRowFull) {
+							foo(whi - 1);
+						} else {
+							foo(whi);
+						}
+					}
+	
+					if (ychanged) {
+						whi--;
+					}
+				}
+
+				wasLastRowFull = isRowFull;
+			}
+		}
+
+		for (let [x, ground] of significantStepsToDo) {
+			for (let y = ground - 1; y >= 0; y--) {
+				let tile = grid[x][y];
+				if (tile && !grid[x][y + 1]) {
+					grid[x][y + 1] = grid[x][y];
+					grid[x][y] = undefined;
+					anythingMoved = true;
+				} else if (tile && grid[x][y + 1] == tile) {
+					inc_score(grid[x][y] * 5);
+					grid[x][y + 1] = grid[x][y] * 2;
+					grid[x][y] = undefined;
+					anythingMoved = true;
+				}
+			}
+		}
+
+		if (mergeInShape) {
+			for (let tile of sh.tiles) {
+				let x = tile.x + sh.x;
+				let y = tile.y + sh.y;
+				if (grid[x][y]) {
+					inc_score(grid[x][y] * 5);
+					grid[x][y] *= 2;
+				} else {
+					grid[x][y] = tile.value;
+				}
+			}
+		}
+
+		for (let shape of shapes) {
+			shape.step();
+		}
+
+		let nothingMoved = !anythingMoved;
+		
+		if (makeNewShape && nothingMoved) {
+			let shape = new Shape();
+			makeNewShape = false;
+			detect_conversion_next_frame = true;
+			if (shape.checkOK()) {
+				shapes.push(shape);
+			} else {
+				document.querySelector("#pause_status").innerText = "Game over!";
+				gameOver = true;
+				document.body.classList.add("go");
+				setTimeout(() => {
+					document.querySelector("#pause_status").innerText = "Game over! Press any arrow key to start again!";
+					gameReallyOver = true;
+				}, 1500);
+			}
+		}
+
+		for (let shape of shapes) {
+			if (shape.shouldConvert()) {
+				detect_conversion = true;
+			}
+		}		
+
+		stepTimeout = setTimeout(step, step_interval);
+	};
+
+	window.onkeydown = (e) => {
+		if (gameOver) {			
+			if (gameReallyOver) {
+				if (e.key.startsWith("Arrow")) {
+					window.location.reload();
+				}
+			}
+			return;
+		}
+
+		if (e.key === "ArrowLeft") {
+			shapes.every(shape => shape.moveLeft());
+		} else if (e.key === "ArrowRight") {
+			shapes.every(shape => shape.moveRight());
+		} else if (e.key === "ArrowDown") {
+			document.querySelector("#pause_status").innerText = "";
+			if (stepTimeout) {
+				if (e.shiftKey) {
+					while (!detect_conversion) {
+						if (gameOver) {
+							break;
+						}
+						clearTimeout(stepTimeout);
+						step();
+					}
+				} else {
+					clearTimeout(stepTimeout);
+					step();
+				}
+
+				detect_conversion = false;
+			} else {
+				step();
+			}
+		} else if (e.key === "ArrowUp") {
+			shapes.every(shape => shape.rotateRight());
+		} else if (e.key === "p") {
+			if (stepTimeout) {
+				document.querySelector("#pause_status").innerText = "The game is paused (press 'p' to unpause)";
+				clearTimeout(stepTimeout);
+				stepTimeout = undefined;
+			} else {
+				document.querySelector("#pause_status").innerText = "";
+				stepTimeout = setTimeout(step, step_interval);
+			}
+		} else if (e.key === "z") {
+			shapes.every(shape => shape.rotateRight());
+		} else if (e.key === "x") {
+			shapes.every(shape => shape.rotateLeft());
+		} else if (e.code === "Space" || e.ctrlKey) {
+			while (!detect_conversion) {
+				if (gameOver) {
+					break;
+				}
+				clearTimeout(stepTimeout);
+				step();
+			}
+
+			detect_conversion = false;
+		}
+	};
+
+	window.onload = main;
+	
+	let updateDarkMode = () => {
+		if (darkMode) {
+			document.body.classList.add("dark");
+		} else {
+			document.body.classList.remove("dark");
+		}
+
+		window.localStorage.setItem("dark-mode", JSON.stringify(darkMode));
+		document.querySelector("#dark-mode-toggle").checked = darkMode;
+	}
+
+	let darkMode = window.localStorage.getItem("dark-mode") === "true" ? true : false;
+	updateDarkMode();
+
+	function toggleDarkMode(el) {
+		darkMode = el.checked;
+		updateDarkMode();
+	}
+
+</script>
+
+<style>
+
+	#canvas {
+		border: 2px solid black;
+	}
+
+	body.dark {
+		background: #222;
+	}
+
+	.dark .info {
+		background: #222 !important;
+		color: #666 !important;
+		border-color: #111 !important; 
+	}
+
+	.dark .info hr {
+		border-color: black;
+	}
+
+	body.dark {
+		color: #888;
+	}
+
+	body.go {
+		background: lightcoral;
+	}
+
+	body.dark.go {
+		background: darkred;
+	}
+
+</style>
