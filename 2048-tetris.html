@@ -98,6 +98,7 @@ input:checked + .slider:before {
 </style>
 
 <h3 id="pause_status"></h3>
+<h3 id="highscore_status"></h3> 
 
 <script>
 
@@ -110,6 +111,16 @@ input:checked + .slider:before {
 	const FONT_SIZE = 18 * 2;
 
 	let step_interval = 1000;
+	let time_passed = 0;
+
+	let determine_step_interval = (time_passed) => {
+		const factor = 0.991;
+		return 1000 * Math.pow(factor, time_passed);
+	};
+
+	let refresh_step_interval = () => {
+		step_interval = determine_step_interval(time_passed);
+	};
 
 	let rndArr = (arr) => {
 		return arr[Math.floor(Math.random() * arr.length)];
@@ -655,6 +666,7 @@ input:checked + .slider:before {
 		ctx = canvas.getContext("2d");
 		window.requestAnimationFrame(loop);
 		stepTimeout = setTimeout(step, step_interval);
+		document.getElementById("highscore_status").innerText = "Highscore: " + Number(window.localStorage.getItem("2048-tetris-highscore") || "0");
 	};
 
 	let highlightedRows = new Map();
@@ -742,7 +754,8 @@ input:checked + .slider:before {
 			detect_conversion_next_frame = false;
 		}
 
-		step_interval *= 0.998;
+		time_passed += step_interval / 1000;
+		refresh_step_interval();
 
 		let shapesToDestroy = [];
 
@@ -819,24 +832,29 @@ input:checked + .slider:before {
 											if (grid[x][y] === grid[x][y - 1]) {
 												inc_score(grid[x][y] * 5);
 												grid[x][y] *= 2;
+												anythingMoved = true;
 											} else if (grid[x][y] < grid[x][y - 1]) {
 												toSave = grid[x][y];
 												grid[x][y] = grid[x][y - 1];
+												anythingMoved = true;
 											} else {
 												break;
 											}
 										} else {
 											grid[x][y] = grid[x][y - 1];
+											anythingMoved = true;
 										}
 									} else {
 										grid[x][y] = grid[x][y - 1];
+										anythingMoved = true;
 									}
 								}
-
+								
 								if (toSave) {
 									for (let y = 0; y <= H; y++) {
 										if ((y == H || grid[x][y]) && y > 0) {
 											grid[x][y - 1] = toSave;
+											anythingMoved = true;
 											break;
 										}
 									}
@@ -908,6 +926,9 @@ input:checked + .slider:before {
 				document.querySelector("#pause_status").innerText = "Game over!";
 				gameOver = true;
 				document.body.classList.add("go");
+				if (score > Number(window.localStorage.getItem("2048-tetris-highscore") || "0")) {
+					window.localStorage.setItem("2048-tetris-highscore", score.toString());
+				}
 				setTimeout(() => {
 					document.querySelector("#pause_status").innerText = "Game over! Press any arrow key to start again!";
 					gameReallyOver = true;
@@ -1023,6 +1044,10 @@ input:checked + .slider:before {
 		background: #222 !important;
 		color: #666 !important;
 		border-color: #111 !important; 
+	}
+
+	.dark .info h2, .dark .info h1 {
+		color: #999 !important;
 	}
 
 	.dark .info hr {

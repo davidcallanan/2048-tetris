@@ -1,6 +1,6 @@
 # 2048-tetris
 
-**Version**: 0.1
+**Version**: 0.1.1
 
 A version of Tetris that includes some ideas from the game 2048.
 
