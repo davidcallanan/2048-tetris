@@ -1,8 +1,7 @@
 <canvas id="canvas" style="width: 360px; height: 720px; display: inline-block; vertical-align: middle;" width="720" height="1440">
-
 </canvas>
 
-<div class="info" style="background: #ddd; font-family: Tahoma; width: 200px; padding: 20px; padding-top: 0px; height: 520px; display: inline-block; border: 4px solid #bbb; vertical-align: middle;">
+<div class="info" style="background: #ddd; font-family: Tahoma; width: 200px; padding: 20px; padding-top: 0px; height: 520px; display: inline-block; border: 4px solid #bbb; vertical-align: bottom;">
 	<h2> Score </h2>
 	<h1 id="score-val">0</h1>
 	<hr>
@@ -32,73 +31,15 @@
 	</label>
 </div>
 
-<style>
-	/* The switch - the box around the slider */
-.switch {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 34px;
-}
-
-/* Hide default HTML checkbox */
-.switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-/* The slider */
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  -webkit-transition: .4s;
-  transition: .4s;
-}
-
-input:checked + .slider {
-  background-color: #2196F3;
-}
-
-input:focus + .slider {
-  box-shadow: 0 0 1px #2196F3;
-}
-
-input:checked + .slider:before {
-  -webkit-transform: translateX(26px);
-  -ms-transform: translateX(26px);
-  transform: translateX(26px);
-}
-
-/* Rounded sliders */
-.slider.round {
-  border-radius: 34px;
-}
-
-.slider.round:before {
-  border-radius: 50%;
-}
-</style>
-
 <h3 id="pause_status"></h3>
-<h3 id="highscore_status"></h3> 
+<h3 id="highscore_status"></h3>
+
+<canvas class="upcoming_and_hold" width="864" height="595"></canvas>
+<div class="upcoming_and_hold-text">
+	Press C to hold.
+	<br><br><br><br><br>
+	Upcoming shapes:
+</div>
 
 <script>
 
@@ -114,7 +55,7 @@ input:checked + .slider:before {
 	let time_passed = 0;
 
 	let determine_step_interval = (time_passed) => {
-		const factor = 0.991;
+		const factor = 0.992;
 		return 1000 * Math.pow(factor, time_passed);
 	};
 
@@ -133,38 +74,58 @@ input:checked + .slider:before {
 		document.querySelector("#score-val").innerText = score;
 	};
 
-	let bag;
+	let bag = [];
+	let bag2 = [];
 
-	let refresh_bag = () => {
+	let clrArr = (arr) => {
+		for (let i = arr.length - 1; i >= 0; i--) {
+			arr.pop();
+		}
+	}
+
+	let refresh_bag = (bag) => {
 		let options = new Set(["straight", "square", "T", "L1", "L2", "skew1", "skew2"]);
-		bag = new Set();
+		clrArr(bag);
 
 		for (let i = 0; i < options.size; i++) {
 			let type = rndArr(Array.from(options));
-			bag.add(type);
+			bag.push(type);
 			options.delete(type);
 		}
 	};
 
-	refresh_bag();
+	refresh_bag(bag);
+	refresh_bag(bag2);
 
 	class Shape {
-		constructor() {
-			if (bag.size == 0) {
-				refresh_bag();
+		constructor(notRandom) {
+			if (notRandom) {
+				this.type = "straight";
+			} else {
+				if (bag.length == 0) {
+					bag = bag2;
+					bag2 = [];
+					refresh_bag(bag2);
+				}
+				this.type = bag[0];
+				bag.splice(0, 1);
 			}
-			this.type = rndArr(Array.from(bag));
-			bag.delete(this.type);
+			this.reset();
+		}
+
+		reset(roundingOptions) {
 			this.x = 0;
 			this.y = 0;
-			this.rotation = Math.floor(Math.random() * 4);
-			this.tiles = [];
-
+			this.rotation = 0;
 			this.createTiles();
-
+			
 			let width = Math.max(...this.tiles.map(tile => tile.x)) - Math.min(...this.tiles.map(tile => tile.x)) + 1;
-			this.x = Math.floor(Math.random() * (W + 1 - width));
-			this.x = rndArr([Math.floor, Math.ceil])((W - width) / 2);
+			roundingOptions = roundingOptions || [Math.floor, Math.ceil];
+			this.x = rndArr(roundingOptions)((W - width) / 2);
+
+			if (this.type === "straight") {
+				this.y--;
+			}
 		}
 
 		createTiles() {
@@ -381,22 +342,24 @@ input:checked + .slider:before {
 			ctx.fillRect(left, 0, right - left, SH);
 		}
 
-		draw() {
+		draw(noDetails) {
 			let left = this.getLeftX() * TILE_SIZE;
 			let right = (this.getRightX() + 1) * TILE_SIZE;
 
-			ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
-			ctx.lineWidth = 5;
-			
-			ctx.beginPath();
-			ctx.moveTo(left, 0);
-			ctx.lineTo(left, SH);
-			ctx.stroke();
-
-			ctx.beginPath();
-			ctx.moveTo(right, 0);
-			ctx.lineTo(right, SH);
-			ctx.stroke();
+			if (!noDetails) {
+				ctx.strokeStyle = "rgba(0, 0, 0, 0.15)";
+				ctx.lineWidth = 5;
+				
+				ctx.beginPath();
+				ctx.moveTo(left, 0);
+				ctx.lineTo(left, SH);
+				ctx.stroke();
+	
+				ctx.beginPath();
+				ctx.moveTo(right, 0);
+				ctx.lineTo(right, SH);
+				ctx.stroke();
+			}
 
 			for (let tile of this.tiles) {
 				draw_tile(tile.value, this.x + tile.x, this.y + tile.y, "purple");
@@ -570,7 +533,11 @@ input:checked + .slider:before {
 					this.x--;
 					if (!this.checkOK()) {
 						this.x++;
-						this.rotateLeft();
+						this.y--;
+						if (!this.checkOK()) {
+							this.y++;
+							this.rotateLeft();
+						}
 					}
 				}
 			}
@@ -586,8 +553,12 @@ input:checked + .slider:before {
 					this.x--;
 					this.x--;
 					if (!this.checkOK()) {
-						this.x++
-						this.rotateRight();
+						this.x++;
+						this.y--;
+						if (!this.checkOK()) {
+							this.y++;
+							this.rotateRight();
+						}
 					}
 				}
 			}
@@ -635,7 +606,9 @@ input:checked + .slider:before {
 	};
 
 	let canvas;
+	let canvas2;
 	let ctx;
+	let ctx2;
 
 	let grid = [];
 	let shapes = [];
@@ -664,10 +637,14 @@ input:checked + .slider:before {
 	let main = () => {
 		canvas = document.getElementById("canvas");
 		ctx = canvas.getContext("2d");
+		canvas2 = document.querySelector(".upcoming_and_hold");
+		ctx2 = canvas2.getContext("2d");
 		window.requestAnimationFrame(loop);
 		stepTimeout = setTimeout(step, step_interval);
 		document.getElementById("highscore_status").innerText = "Highscore: " + Number(window.localStorage.getItem("2048-tetris-highscore") || "0");
 	};
+
+	let holdShape;
 
 	let highlightedRows = new Map();
 
@@ -680,6 +657,34 @@ input:checked + .slider:before {
 		}
 
 		ctx.fillRect(0, 0, SW, SH);
+		ctx2.clearRect(0, 0, 864, 595);
+		
+		let c = ctx; // {
+		ctx = ctx2;
+
+		if (holdShape) {
+			holdShape.x += 3;
+			holdShape.y += 1;
+			holdShape.draw(true);
+			holdShape.x -= 3;
+			holdShape.y -= 1;
+		}
+
+		let upcomingTypes = [];
+		upcomingTypes.push(bag[0] || bag2[0 - bag.length]);
+		upcomingTypes.push(bag[1] || bag2[1 - bag.length]);
+		upcomingTypes.push(bag[2] || bag2[2 - bag.length]);
+		let upcomings = [new Shape(true), new Shape(true), new Shape(true)];
+		for (let i = 0; i < 3; i++) {
+			upcomings[i].type = upcomingTypes[i];
+			upcomings[i].reset([Math.floor]);
+			upcomings[i].x -= 3;
+			upcomings[i].x += i * 4;
+			upcomings[i].y += 6;
+			upcomings[i].draw(true);
+		}
+		
+		ctx = c; // }
 		
 		for (let shape of shapes) {
 			shape.drawbg();
@@ -708,6 +713,7 @@ input:checked + .slider:before {
 	};
 
 	let makeNewShape = false;
+	let makeNewShapeMode = "new";
 
 	let gameOver = false;
 	let gameReallyOver = false;
@@ -743,6 +749,8 @@ input:checked + .slider:before {
 	};
 
 	let detect_conversion_next_frame = false;
+	
+	let preventHoldSwapping = 0;
 
 	let step = () => {
 		if (gameOver) {
@@ -917,9 +925,14 @@ input:checked + .slider:before {
 		let nothingMoved = !anythingMoved;
 		
 		if (makeNewShape && nothingMoved) {
-			let shape = new Shape();
+			preventHoldSwapping--;
+			let shape = makeNewShapeMode == "new" ? new Shape() : makeNewShapeMode;
 			makeNewShape = false;
+			makeNewShapeMode = "new";
 			detect_conversion_next_frame = true;
+			if (!shape.checkOK()) {
+				shape.y--;
+			}
 			if (shape.checkOK()) {
 				shapes.push(shape);
 			} else {
@@ -994,6 +1007,15 @@ input:checked + .slider:before {
 			shapes.every(shape => shape.rotateRight());
 		} else if (e.key === "x") {
 			shapes.every(shape => shape.rotateLeft());
+		} else if (e.key === "c" && preventHoldSwapping <= 0) {
+			let currHold = holdShape;
+			holdShape = shapes[0];
+			holdShape.reset();
+			shapes = [];
+			makeNewShape = true;
+			makeNewShapeMode = currHold ? currHold : "new";
+			preventHoldSwapping = 2;
+			stepImmediately();
 		} else if (e.code === "Space" || e.ctrlKey) {
 			while (!detect_conversion) {
 				if (gameOver) {
@@ -1032,8 +1054,38 @@ input:checked + .slider:before {
 
 <style>
 
+	body {
+		font-family: Tahoma;
+	}
+
 	#canvas {
 		border: 2px solid black;
+	}
+
+	.upcoming_and_hold {
+		position: fixed;
+		top: 0.5rem;
+		left: 23.5rem;
+		width: 15.25rem;
+		height: 10.5rem;
+		border: 2px solid black;
+		background: rgb(196, 196, 170);
+	}
+	
+	.upcoming_and_hold-text {
+		position: fixed;
+		top: 0.5rem;
+		left: 23.5rem;
+		width: 15.25rem;
+		height: 10.5rem;
+		padding-left: 0.25rem;
+		padding-top: 0.25rem;
+		font-size: 0.875rem;
+	}
+	
+	.dark .upcoming_and_hold {
+		background: rgb(91, 91, 79);		
+		background: rgb(68, 68, 60);		
 	}
 
 	body.dark {
@@ -1066,4 +1118,69 @@ input:checked + .slider:before {
 		background: darkred;
 	}
 
+</style>
+
+<style>
+	/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
 </style>

@@ -1,11 +1,19 @@
 # Changelog
 
+# 0.1.2
+
+ - Add holding feature.
+ - Show upcoming tetrinomes.
+ - Add ground kick.
+ - Improve spawning of tetrinomes.
+ - Slow down speed increases.
+
 # 0.1.1
 
- - Added highscore
- - New tiles only spawn when all mergings have completed
- - Speed increases have been adjusted to prevent exponential speed-up
+ - Add highscore.
+ - Spawn New tiles only when all mergings have completed.
+ - Adjust speed increases to prevent exponential speed-up.
 
 # 0.1
 
-First version of the game
+ - First version of the game.
