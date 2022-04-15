@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.1.3
+
+ - Actually slow down speed increases.
+
 # 0.1.2
 
  - Add holding feature.

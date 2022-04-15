@@ -55,7 +55,7 @@
 	let time_passed = 0;
 
 	let determine_step_interval = (time_passed) => {
-		const factor = 0.992;
+		const factor = 0.994;
 		return 1000 * Math.pow(factor, time_passed);
 	};
 
