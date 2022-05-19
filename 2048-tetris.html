@@ -1,3 +1,6 @@
+<div style="display: flex; flex-direction: column; align-items: center;">
+<div>
+
 <canvas id="canvas" style="width: 360px; height: 720px; display: inline-block; vertical-align: middle;" width="720" height="1440">
 </canvas>
 
@@ -10,7 +13,7 @@
 		Up to rotate (or Z/X).<br><br>
 		Down arrow to drop.<br><br>
 		Ctrl/space/shift+down to insta-drop.<br><br>
-		P to pause/unpause.<br>
+		P or ESC to pause/unpause.<br>
 	</p>
 	<hr>
 	<p style="font-size: 0.5rem;">
@@ -31,14 +34,19 @@
 	</label>
 </div>
 
-<h3 id="pause_status"></h3>
-<h3 id="highscore_status"></h3>
+<div style="width: 720px">
+	<h3 id="pause_status"></h3>
+	<h3 id="highscore_status"></h3>
+</div>
 
 <canvas class="upcoming_and_hold" width="864" height="595"></canvas>
 <div class="upcoming_and_hold-text">
 	Press C to hold.
 	<br><br><br><br><br>
 	Upcoming shapes:
+</div>
+
+</div>
 </div>
 
 <script>
@@ -571,6 +579,10 @@
 		getRightX() {
 			return Math.max(...this.tiles.map(tile => tile.x + this.x));
 		}
+
+		averageX() {
+			return (this.getLeftX() + this.getRightX()) / 2;
+		}
 	}
 
 	let draw_tile = (tile, x, y, background) => {
@@ -642,6 +654,52 @@
 		window.requestAnimationFrame(loop);
 		stepTimeout = setTimeout(step, step_interval);
 		document.getElementById("highscore_status").innerText = "Highscore: " + Number(window.localStorage.getItem("2048-tetris-highscore") || "0");
+			
+		canvas.onclick = (e) => {
+			console.log(e);
+			moveDownABit(true);
+			followMouseOnNextSpawn = true;
+		};
+
+		canvas.oncontextmenu = (e) => {
+			console.log(e);
+			performHold();
+			e.preventDefault();
+			followMouseOnNextSpawn = true;
+		};
+		
+		canvas.onmousemove = (e) => {
+			p = getCanvasMousePos(e);
+			followMouse();
+			followMouseOnNextSpawn = true;
+		};
+	};
+	
+	let followMouseOnNextSpawn = false;
+	let p;
+	let followMouse = () => {
+		if (!p) {
+			return;
+		}
+
+		let i = Math.max(Math.min(Math.floor(p.x / 363.33 * 10), 9), 0);
+		console.log(i);
+
+		if (shapes[0]) {
+			let shape = shapes[0];
+
+			for (let it = 0; it < 10; it++) {
+				let avX = shape.averageX();
+				if (avX != Math.floor(avX)) {
+					avX -= 0.5;
+				}
+				if (avX < i) {
+					shape.moveRight();
+				} else if (avX > i) {
+					shape.moveLeft();
+				}
+			}
+		}
 	};
 
 	let holdShape;
@@ -935,6 +993,10 @@
 			}
 			if (shape.checkOK()) {
 				shapes.push(shape);
+				if (followMouseOnNextSpawn) {
+					followMouseOnNextSpawn = false;
+					followMouse();
+				}
 			} else {
 				document.querySelector("#pause_status").innerText = "Game over!";
 				gameOver = true;
@@ -958,8 +1020,50 @@
 		stepTimeout = setTimeout(step, step_interval);
 	};
 
+	let moveInterval;
+	let moveSide;
+	let moveDelay;
+	let downInterval;
+
+	let moveDownABit = (shiftKey) => {
+		document.querySelector("#pause_status").innerText = "";
+		if (stepTimeout) {
+			if (shiftKey) {
+				while (!detect_conversion) {
+					if (gameOver) {
+						break;
+					}
+					clearTimeout(stepTimeout);
+					step();
+				}
+			} else {
+				clearTimeout(stepTimeout);
+				step();
+			}
+
+			detect_conversion = false;
+		} else {
+			step();
+		}
+	};
+
+	let performHold = () => {
+		if (preventHoldSwapping > 0) {
+			return;
+		}
+
+		let currHold = holdShape;
+		holdShape = shapes[0];
+		holdShape.reset();
+		shapes = [];
+		makeNewShape = true;
+		makeNewShapeMode = currHold ? currHold : "new";
+		preventHoldSwapping = 2;
+		stepImmediately();
+	};
+
 	window.onkeydown = (e) => {
-		if (gameOver) {			
+		if (gameOver) {
 			if (gameReallyOver) {
 				if (e.key.startsWith("Arrow")) {
 					window.location.reload();
@@ -969,32 +1073,44 @@
 		}
 
 		if (e.key === "ArrowLeft") {
-			shapes.every(shape => shape.moveLeft());
-		} else if (e.key === "ArrowRight") {
-			shapes.every(shape => shape.moveRight());
-		} else if (e.key === "ArrowDown") {
-			document.querySelector("#pause_status").innerText = "";
-			if (stepTimeout) {
-				if (e.shiftKey) {
-					while (!detect_conversion) {
-						if (gameOver) {
-							break;
-						}
-						clearTimeout(stepTimeout);
-						step();
-					}
-				} else {
-					clearTimeout(stepTimeout);
-					step();
+			if (!moveInterval || moveSide === "right") {
+				if (moveInterval) {
+					clearInterval(moveInterval);
 				}
-
-				detect_conversion = false;
-			} else {
-				step();
+				moveSide = "left";
+				moveDelay = 0;
+				shapes.every(shape => shape.moveLeft());
+				moveInterval = setInterval(() => {
+					if (moveDelay >= 80 / 40) {
+						if (!gameOver) {
+							shapes.every(shape => shape.moveLeft());
+						}
+					}
+					moveDelay++;
+				}, 40);
 			}
+		} else if (e.key === "ArrowRight") {
+			if (!moveInterval || moveSide === "left") {
+				if (moveInterval) {
+					clearInterval(moveInterval);
+				}
+				moveSide = "right";
+				moveDelay = 0;
+				shapes.every(shape => shape.moveRight());
+				moveInterval = setInterval(() => {
+					if (moveDelay >= 80 / 40) {
+						if (!gameOver) {
+							shapes.every(shape => shape.moveRight());
+						}
+					}
+					moveDelay++;
+				}, 40);
+			}
+		} else if (e.key === "ArrowDown") {
+			moveDownABit(e.shiftKey);
 		} else if (e.key === "ArrowUp") {
 			shapes.every(shape => shape.rotateRight());
-		} else if (e.key === "p") {
+		} else if (e.key === "p" || e.key === "Escape") {
 			if (stepTimeout) {
 				document.querySelector("#pause_status").innerText = "The game is paused (press 'p' to unpause)";
 				clearTimeout(stepTimeout);
@@ -1007,26 +1123,39 @@
 			shapes.every(shape => shape.rotateRight());
 		} else if (e.key === "x") {
 			shapes.every(shape => shape.rotateLeft());
-		} else if (e.key === "c" && preventHoldSwapping <= 0) {
-			let currHold = holdShape;
-			holdShape = shapes[0];
-			holdShape.reset();
-			shapes = [];
-			makeNewShape = true;
-			makeNewShapeMode = currHold ? currHold : "new";
-			preventHoldSwapping = 2;
-			stepImmediately();
+		} else if (e.key === "c") {
+			performHold();
 		} else if (e.code === "Space" || e.ctrlKey) {
-			while (!detect_conversion) {
-				if (gameOver) {
-					break;
-				}
-				clearTimeout(stepTimeout);
-				step();
-			}
-
-			detect_conversion = false;
+			moveDownABit(true);
 		}
+	};
+
+	window.onkeyup = (e) => {
+		if (e.key === "ArrowLeft") {
+			if (moveSide === "left") {
+				clearInterval(moveInterval);
+				moveInterval = undefined;
+				moveSide = undefined;
+				moveDelay = undefined;
+			}
+		}
+		
+		if (e.key === "ArrowRight") {
+			if (moveSide === "right") {
+				clearInterval(moveInterval);
+				moveInterval = undefined;
+				moveSide = undefined;
+				moveDelay = undefined;
+			}
+		}
+	};
+
+	let getCanvasMousePos = (e) => {
+		let rect = canvas.getBoundingClientRect();
+		return {
+			x: e.clientX - rect.left,
+			y: e.clientY - rect.top
+		};
 	};
 
 	window.onload = main;
@@ -1065,7 +1194,9 @@
 	.upcoming_and_hold {
 		position: fixed;
 		top: 0.5rem;
-		left: 23.5rem;
+		/* left: 23.5rem; */
+		/* left: calc(50% + 23.5rem - 21.875rem - 1px); */
+		left: calc(50% + 23.5rem - 21.875rem - 1px - 1rem);
 		width: 15.25rem;
 		height: 10.5rem;
 		border: 2px solid black;
@@ -1075,7 +1206,9 @@
 	.upcoming_and_hold-text {
 		position: fixed;
 		top: 0.5rem;
-		left: 23.5rem;
+		/* left: 23.5rem; */
+		/* left: calc(50% + 23.5rem - 21.875rem - 1px); */
+		left: calc(50% + 23.5rem - 21.875rem - 1px - 1rem);
 		width: 15.25rem;
 		height: 10.5rem;
 		padding-left: 0.25rem;
@@ -1121,6 +1254,10 @@
 </style>
 
 <style>
+	#canvas {
+		user-select: none;
+	}
+
 	/* The switch - the box around the slider */
 .switch {
   position: relative;

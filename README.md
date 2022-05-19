@@ -1,6 +1,6 @@
 # 2048-tetris
 
-**Version**: 0.1.3
+**Version**: 0.1.4
 
 A version of Tetris that includes some ideas from the game 2048.
 
@@ -17,6 +17,7 @@ To work on down the road:
  - Rewrite code from scratch
  - Improve UI and UX
  - Perfect how the 2048 mechanics work and come up with unique ideas
- - Adjust the numbers of spawned shapes nicely to add more interesting gameplay
+ - Adjust the values of spawned shapes nicely to add more interesting gameplay
+ - Adjust scoring system
 
 Copyright (C) 2022 David P. Callanan. All rights reserved.
