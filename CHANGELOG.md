@@ -1,5 +1,11 @@
 # Changelog
 
+# 0.1.5
+
+ - Mobile touch support improved.
+ - Version number now displayed on webpage.
+ - Link to repo now displayed on webpage.
+
 # 0.1.4
 
  - Can now use escape to pause/unpause.

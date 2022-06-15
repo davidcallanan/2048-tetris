@@ -654,11 +654,25 @@
 		window.requestAnimationFrame(loop);
 		stepTimeout = setTimeout(step, step_interval);
 		document.getElementById("highscore_status").innerText = "Highscore: " + Number(window.localStorage.getItem("2048-tetris-highscore") || "0");
-			
-		canvas.onclick = (e) => {
+		
+		let mouseDownTime;
+		let mouseStartY;
+		let isMouseDown;
+
+		canvas.onpointerdown = (e) => {
+			mouseDownTime = Date.now();
+			isMouseDown = true;
+		};
+
+		canvas.onpointerup = (e) => {
 			console.log(e);
-			moveDownABit(true);
-			followMouseOnNextSpawn = true;
+			if (Date.now() - mouseDownTime < 500) {
+				moveDownABit(true);
+				followMouseOnNextSpawn = true;
+			}
+
+			mouseStartY = undefined;
+			isMouseDown = false;
 		};
 
 		canvas.oncontextmenu = (e) => {
@@ -667,11 +681,56 @@
 			e.preventDefault();
 			followMouseOnNextSpawn = true;
 		};
-		
-		canvas.onmousemove = (e) => {
+
+		window.onpointermove = (e) => {
 			p = getCanvasMousePos(e);
 			followMouse();
 			followMouseOnNextSpawn = true;
+			doMouseRotations(p.y);
+		};
+		
+		let touchmove = (e) => {
+			console.log(e);
+			let touch = e.touches[0] || e.changedTouches[0];
+			p = getCanvasMousePos({
+				clientX: touch.pageX,
+				clientY: touch.pageY,
+			});
+			followMouse();
+			followMouseOnNextSpawn = true;
+			doMouseRotations(p.y);
+		};
+		
+		canvas.ontouchstart = touchmove;
+		canvas.ontouchend = touchmove;
+		canvas.ontouchmove = touchmove;
+
+		let doMouseRotations = (y) => {
+			if (!isMouseDown) {
+				return;
+			}
+
+			const sensitivity = 50;
+
+			if (!mouseStartY) {
+				mouseStartY = y;
+			}
+
+			while (y <= mouseStartY - sensitivity) {
+				mouseStartY -= sensitivity;
+				
+				if (shapes[0]) {
+					shapes[0].rotateRight();
+				}
+			}
+
+			while (y >= mouseStartY + sensitivity) {
+				mouseStartY += sensitivity;
+				
+				if (shapes[0]) {
+					shapes[0].rotateLeft();
+				}
+			}
 		};
 	};
 	
@@ -1320,4 +1379,63 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+</style>
+
+<div class="footer">
+	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.5)</span></p>
+	<a href="https://github.com/davidcallanan/2048-tetris" target="_blank"><div class="vog">
+		View on GitHub
+	</div></a>
+</div>
+
+<style>
+
+	.footer {
+		position: fixed;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		border-top: 1px solid #ddd;
+		background: #eee;
+		display: flex;
+		padding: 0.25rem;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.875rem;
+	}
+
+	.dark .footer {
+		background: #111;
+		border-top-color: black;
+		color: white;
+	}
+
+	.footer .version {
+		color: gray;
+	}
+
+	.dark .footer .version {
+		color: lightgray;
+	}
+
+	.footer p {
+		margin: 0;
+		margin-right: 2rem;
+	}
+
+	.vog {
+		background: white;
+		border-radius: 1rem;
+		padding: 0.25rem 0.75rem;
+	}
+
+	.dark .vog {
+		background: #333;
+	}
+
+	.footer a {
+		color: #2196F3 !important;
+		text-decoration: none;
+	}
+
 </style>
