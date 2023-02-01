@@ -1,8 +1,10 @@
 # 2048-tetris
 
-**Version**: 0.1.4
+**Version**: 0.1.5
 
 A version of Tetris that includes some ideas from the game 2048.
+
+You can try it out live at [https://david.callanan.ie/2048-tetris](https://david.callanan.ie/2048-tetris).
 
 This is just a proof of concept, put together very quickly. It has not been extensively tested, and the core features could have significant flaws.
 
