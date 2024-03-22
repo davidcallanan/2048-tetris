@@ -8,29 +8,49 @@
 	<h2> Score </h2>
 	<h1 id="score-val">0</h1>
 	<button tabindex="-1" id="controls-mechanics-btn" onclick="toggleControlsOrMechanics();">Help: Mechanics</button>
-	<hr>
-	<div style="height: 250px;">
-		<div id="controls-div">
-			<p style="font-size: 0.75rem;">
-				Left and right to move.<br><br>
-				Up to rotate (or Z/X).<br><br>
-				Down arrow to drop.<br><br>
-				Space/Shift+Down/Shift+K to insta-drop.<br><br>
-				J/L for fast movement.<br><br>
-				H/K for single step.<br><br>
-				P or ESC to pause/unpause.<br><br>
-				<small>Step interval: <span id="step-interval"></span></small>
-			</p>
-		</div>
-		<div id="mechanics-div" style="display: none;">
-			<p style="font-size: 0.5rem;">
-				Tiles can merge under certain circumstances if numbers match up.<br><br>
-				When your piece collides, it can merge in up to 1 level deep.<br><br>
-				If it fails to merge (not all required tiles match up), then it just sticks/attaches on top.<br><br>
-				When a row is filled it will become a merger row, unless it is already a merger row in which case the row above it becomes a merger row.<br><br>
-				If the bottom row is filled, then it is always the row above that becomes the merger row.<br><br>
-				Each tile on a merger row will individually be pushed down to the row below, and tiles above it will follow. If the tile it pushes into matches up, they will merge. If the two tiles do not match up, the tile being pushed into will wrap around and appear at the top of the column, but only if the number being pushed into is smaller. Larger numbers will remain fixed in place and will prevent any of the movement.
-			</p>
+	<button tabindex="-1" id="settings-btn" onclick="toggleSettings();">Settings</button>
+	<div id="settings" style="display: none;">
+		<hr>
+		Settings<br>
+		<hr>
+		<small>DAS = Delayed AutoShift<br>ARR = Auto Repeat Rate</small>
+		<hr>
+		<b>Left/Right arrows</b><br>
+		DAS: <input class="no-blurrr" type="number" min="0" max="5" step="1" id="arrows-das"> ARR cycles
+		ARR: <input class="no-blurrr" type="number" min="1.0" max="100" step="0.1" id="arrows-arr"/> ms
+		<hr>
+		<b>J/L keys</b><br>
+		DAS: <input class="no-blurrr" type="number" min="0" max="5" step="1" id="jl-das"> ARR cycles
+		ARR: <input class="no-blurrr" type="number" min="1.0" max="100" step="0.1" id="jl-arr"/> ms
+		<hr>
+		<button onclick="saveSettings()">Save Settings</button>
+		<button onclick="resetSettings(true)">Reset Settings</button>
+	</div>
+	<div id="non-settings">
+		<hr>
+		<div style="height: 250px;">
+			<div id="controls-div">
+				<p style="font-size: 0.75rem;">
+					Left and right to move.<br><br>
+					Up to rotate (or Z/X).<br><br>
+					Down arrow to drop.<br><br>
+					Space/Shift+Down/Shift+K to insta-drop.<br><br>
+					J/L for fast movement.<br><br>
+					H/K for single step.<br><br>
+					P or ESC to pause/unpause.<br><br>
+					<small>Step interval: <span id="step-interval"></span></small>
+				</p>
+			</div>
+			<div id="mechanics-div" style="display: none;">
+				<p style="font-size: 0.5rem;">
+					Tiles can merge under certain circumstances if numbers match up.<br><br>
+					When your piece collides, it can merge in up to 1 level deep.<br><br>
+					If it fails to merge (not all required tiles match up), then it just sticks/attaches on top.<br><br>
+					When a row is filled it will become a merger row, unless it is already a merger row in which case the row above it becomes a merger row.<br><br>
+					If the bottom row is filled, then it is always the row above that becomes the merger row.<br><br>
+					Each tile on a merger row will individually be pushed down to the row below, and tiles above it will follow. If the tile it pushes into matches up, they will merge. If the two tiles do not match up, the tile being pushed into will wrap around and appear at the top of the column, but only if the number being pushed into is smaller. Larger numbers will remain fixed in place and will prevent any of the movement.
+				</p>
+			</div>
 		</div>
 	</div>
 
@@ -63,6 +83,9 @@
 <script>
 
 	const toggleControlsOrMechanics = () => {
+		document.querySelector("#settings").style.display = "none";
+		document.querySelector("#settings").classList.remove("show");
+
 		const btn = document.querySelector("#controls-mechanics-btn");
 
 		if (btn.innerText === "Help: Mechanics") {
@@ -76,8 +99,42 @@
 		}
 	};
 
+	const toggleSettings = () => {
+		const settings = document.querySelector("#settings");
+
+		if (settings.style.display === "none") {
+			settings.style.display = "block";
+			settings.classList.add("show");
+		} else {
+			settings.style.display = "none";
+			settings.classList.remove("show");
+		}
+	};
+
+	const resetSettings = (r) => {
+		window.localStorage.setItem("2048-tetris-arrows-das", "2");
+		window.localStorage.setItem("2048-tetris-jl-das", "2");
+		window.localStorage.setItem("2048-tetris-arrows-arr", "50");
+		window.localStorage.setItem("2048-tetris-jl-arr", "33.3");
+		
+		if (r) {
+			window.location.reload();
+		}
+	};
+
+	const saveSettings = () => {
+		window.localStorage.setItem("2048-tetris-arrows-das", document.querySelector("#arrows-das").value);
+		window.localStorage.setItem("2048-tetris-jl-das", document.querySelector("#jl-das").value);
+		window.localStorage.setItem("2048-tetris-arrows-arr", document.querySelector("#arrows-arr").value);
+		window.localStorage.setItem("2048-tetris-jl-arr", document.querySelector("#jl-arr").value);
+
+		window.location.reload();
+	};
+
 	setInterval(() => {
-		document.activeElement?.blur();
+		if (!document.activeElement?.classList.has("no-blurrr")) {
+			document.activeElement?.blur();
+		}
 	}, 100);
 
 	const W = 10;
@@ -679,6 +736,15 @@
 	};
 
 	let main = () => {
+		if (!window.localStorage.getItem("2048-tetris-arrows-das")) {
+			resetSettings();
+		}
+
+		document.querySelector("#arrows-das").value = window.localStorage.getItem("2048-tetris-arrows-das")
+		document.querySelector("#jl-das").value = window.localStorage.getItem("2048-tetris-jl-das")
+		document.querySelector("#arrows-arr").value = window.localStorage.getItem("2048-tetris-arrows-arr")
+		document.querySelector("#jl-arr").value = window.localStorage.getItem("2048-tetris-jl-arr")
+
 		canvas = document.getElementById("canvas");
 		ctx = canvas.getContext("2d");
 		canvas2 = document.querySelector(".upcoming_and_hold");
@@ -1178,13 +1244,13 @@
 				moveDelay = 0;
 				shapes.every(shape => shape.moveLeft());
 				moveInterval = setInterval(() => {
-					if (moveDelay >= 2) {
+					if (moveDelay >= parseInt(window.localStorage.getItem("2048-tetris-arrows-das"))) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveLeft());
 						}
 					}
 					moveDelay++;
-				}, 50);
+				}, parseFloat(window.localStorage.getItem("2048-tetris-arrows-arr")));
 			}
 		} else if (e.code === "KeyJ") {
 			if (!moveInterval || moveSide === "right") {
@@ -1196,14 +1262,14 @@
 				shapes.every(shape => shape.moveLeft());
 				// shapes.every(shape => shape.moveLeft());
 				moveInterval = setInterval(() => {
-					if (moveDelay >= 2) {
+					if (moveDelay >= window.localStorage.getItem("2048-tetris-jl-das")) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveLeft());
 							// shapes.every(shape => shape.moveLeft());
 						}
 					}
 					moveDelay++;
-				}, 33.3);
+				}, window.localStorage.getItem("2048-tetris-jl-arr"));
 			}
 		} else if (e.code === "KeyH") {
 			shapes.every(shape => shape.moveLeft());
@@ -1216,13 +1282,13 @@
 				moveDelay = 0;
 				shapes.every(shape => shape.moveRight());
 				moveInterval = setInterval(() => {
-					if (moveDelay >= 2) {
+					if (moveDelay >= parseInt(window.localStorage.getItem("2048-tetris-arrows-das"))) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveRight());
 						}
 					}
 					moveDelay++;
-				}, 50);
+				}, parseFloat(window.localStorage.getItem("2048-tetris-arrows-arr")));
 			}
 		} else if (e.code === "KeyL") {
 			if (!moveInterval || moveSide === "left") {
@@ -1234,14 +1300,14 @@
 				shapes.every(shape => shape.moveRight());
 				// shapes.every(shape => shape.moveRight());
 				moveInterval = setInterval(() => {
-					if (moveDelay >= 2) {
+					if (moveDelay >= window.localStorage.getItem("2048-tetris-jl-das")) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveRight());
 							// shapes.every(shape => shape.moveRight());
 						}
 					}
 					moveDelay++;
-				}, 33.3);
+				}, window.localStorage.getItem("2048-tetris-jl-arr"));
 			}
 		} else if (e.key === "ArrowDown" || e.code === "KeyK") {
 			if (e.shiftKey) {
@@ -1331,6 +1397,10 @@
 
 	#canvas {
 		border: 2px solid black;
+	}
+
+	#settings.show + #non-settings {
+		visibility: hidden;
 	}
 
 	.upcoming_and_hold {
@@ -1465,7 +1535,7 @@ input:checked + .slider:before {
 </style>
 
 <div class="footer">
-	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.6)</span></p>
+	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.7)</span></p>
 	<a href="https://github.com/davidcallanan/2048-tetris" target="_blank"><div class="vog">
 		View on GitHub
 	</div></a>

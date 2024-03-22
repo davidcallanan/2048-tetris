@@ -1,5 +1,9 @@
 # Changelog
 
+# 0.1.7
+
+ - Add settings for DAS and ARR.
+
 # 0.1.6
 
  - Rearrange and simplify UI.
