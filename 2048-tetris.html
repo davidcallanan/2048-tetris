@@ -1,42 +1,53 @@
 <div style="display: flex; flex-direction: column; align-items: center;">
 <div>
 
-<canvas id="canvas" style="width: 360px; height: 720px; display: inline-block; vertical-align: middle;" width="720" height="1440">
+<canvas tabindex="1" id="canvas" style="width: 360px; height: 720px; display: inline-block; vertical-align: middle;" width="720" height="1440">
 </canvas>
 
 <div class="info" style="background: #ddd; font-family: Tahoma; width: 200px; padding: 20px; padding-top: 0px; height: 520px; display: inline-block; border: 4px solid #bbb; vertical-align: bottom;">
 	<h2> Score </h2>
 	<h1 id="score-val">0</h1>
+	<button tabindex="-1" id="controls-mechanics-btn" onclick="toggleControlsOrMechanics();">Help: Mechanics</button>
 	<hr>
-	<p style="font-size: 0.75rem;">
-		Left and right to move.<br><br>
-		Up to rotate (or Z/X).<br><br>
-		Down arrow to drop.<br><br>
-		Ctrl/space/shift+down to insta-drop.<br><br>
-		P or ESC to pause/unpause.<br>
-	</p>
-	<hr>
-	<p style="font-size: 0.5rem;">
-		Tiles can merge under certain circumstances if numbers match up.<br><br>
-		When your piece collides, it can merge in up to 1 level deep.<br><br>
-		If it fails to merge (not all required tiles match up), then it just sticks/attaches on top.<br><br>
-		When a row is filled it will become a merger row, unless it is already a merger row in which case the row above it becomes a merger row.<br><br>
-		If the bottom row is filled, then it is always the row above that becomes the merger row.<br><br>
-		Each tile on a merger row will individually be pushed down to the row below, and tiles above it will follow. If the tile it pushes into matches up, they will merge. If the two tiles do not match up, the tile being pushed into will wrap around and appear at the top of the column, but only if the number being pushed into is smaller. Larger numbers will remain fixed in place and will prevent any of the movement.
-	</p>
-</div>
+	<div style="height: 250px;">
+		<div id="controls-div">
+			<p style="font-size: 0.75rem;">
+				Left and right to move.<br><br>
+				Up to rotate (or Z/X).<br><br>
+				Down arrow to drop.<br><br>
+				Space/Shift+Down/Shift+K to insta-drop.<br><br>
+				J/L for fast movement.<br><br>
+				H/K for single step.<br><br>
+				P or ESC to pause/unpause.<br><br>
+				<small>Step interval: <span id="step-interval"></span></small>
+			</p>
+		</div>
+		<div id="mechanics-div" style="display: none;">
+			<p style="font-size: 0.5rem;">
+				Tiles can merge under certain circumstances if numbers match up.<br><br>
+				When your piece collides, it can merge in up to 1 level deep.<br><br>
+				If it fails to merge (not all required tiles match up), then it just sticks/attaches on top.<br><br>
+				When a row is filled it will become a merger row, unless it is already a merger row in which case the row above it becomes a merger row.<br><br>
+				If the bottom row is filled, then it is always the row above that becomes the merger row.<br><br>
+				Each tile on a merger row will individually be pushed down to the row below, and tiles above it will follow. If the tile it pushes into matches up, they will merge. If the two tiles do not match up, the tile being pushed into will wrap around and appear at the top of the column, but only if the number being pushed into is smaller. Larger numbers will remain fixed in place and will prevent any of the movement.
+			</p>
+		</div>
+	</div>
 
-<div style="display: inline-block;">
-	<b style="font-family: Tahoma; font-size: 0.75rem; margin-bottom: 0.25rem; display: inline-block;">Dark mode</b><br>
-	<label class="switch">
-		<input type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this);">
-		<span class="slider round"></span>
-	</label>
+	<div style="display: inline-block;">
+		<b style="font-family: Tahoma; font-size: 0.75rem; margin-bottom: 0.25rem; display: inline-block;">Dark mode</b><br>
+		<label class="switch">
+			<input tabindex="-1" type="checkbox" id="dark-mode-toggle" onchange="toggleDarkMode(this);">
+			<span class="slider round"></span>
+		</label>
+	</div>
+
+	
+	<h3 id="highscore_status"></h3>
 </div>
 
 <div style="width: 720px">
 	<h3 id="pause_status"></h3>
-	<h3 id="highscore_status"></h3>
 </div>
 
 <canvas class="upcoming_and_hold" width="864" height="595"></canvas>
@@ -51,6 +62,24 @@
 
 <script>
 
+	const toggleControlsOrMechanics = () => {
+		const btn = document.querySelector("#controls-mechanics-btn");
+
+		if (btn.innerText === "Help: Mechanics") {
+			btn.innerText = "Help: Controls";
+			document.querySelector("#controls-div").style.display = "none";
+			document.querySelector("#mechanics-div").style.display = "block";
+		} else {
+			btn.innerText = "Help: Mechanics";
+			document.querySelector("#controls-div").style.display = "block";
+			document.querySelector("#mechanics-div").style.display = "none";
+		}
+	};
+
+	setInterval(() => {
+		document.activeElement?.blur();
+	}, 100);
+
 	const W = 10;
 	const H = 20;
 	const SW = 360 * 2;
@@ -60,6 +89,7 @@
 	const FONT_SIZE = 18 * 2;
 
 	let step_interval = 1000;
+	let real_step_interval = step_interval;
 	let time_passed = 0;
 
 	let determine_step_interval = (time_passed) => {
@@ -69,6 +99,8 @@
 
 	let refresh_step_interval = () => {
 		step_interval = determine_step_interval(time_passed);
+		real_step_interval = step_interval * 967 / 1000 + 33;
+		document.querySelector("#step-interval").innerText = real_step_interval.toFixed(1);
 	};
 
 	let rndArr = (arr) => {
@@ -684,6 +716,9 @@
 
 		window.onpointermove = (e) => {
 			p = getCanvasMousePos(e);
+			if (p.x < 0 || p.x > 363.33) {
+				return;
+			}
 			followMouse();
 			followMouseOnNextSpawn = true;
 			doMouseRotations(p.y);
@@ -696,6 +731,9 @@
 				clientX: touch.pageX,
 				clientY: touch.pageY,
 			});
+			if (p.x < 0 || p.x > 363.33) {
+				return;
+			}
 			followMouse();
 			followMouseOnNextSpawn = true;
 			doMouseRotations(p.y);
@@ -1140,14 +1178,35 @@
 				moveDelay = 0;
 				shapes.every(shape => shape.moveLeft());
 				moveInterval = setInterval(() => {
-					if (moveDelay >= 80 / 40) {
+					if (moveDelay >= 2) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveLeft());
 						}
 					}
 					moveDelay++;
-				}, 40);
+				}, 50);
 			}
+		} else if (e.code === "KeyJ") {
+			if (!moveInterval || moveSide === "right") {
+				if (moveInterval) {
+					clearInterval(moveInterval);
+				}
+				moveSide = "left";
+				moveDelay = 0;
+				shapes.every(shape => shape.moveLeft());
+				// shapes.every(shape => shape.moveLeft());
+				moveInterval = setInterval(() => {
+					if (moveDelay >= 2) {
+						if (!gameOver) {
+							shapes.every(shape => shape.moveLeft());
+							// shapes.every(shape => shape.moveLeft());
+						}
+					}
+					moveDelay++;
+				}, 33.3);
+			}
+		} else if (e.code === "KeyH") {
+			shapes.every(shape => shape.moveLeft());
 		} else if (e.key === "ArrowRight") {
 			if (!moveInterval || moveSide === "left") {
 				if (moveInterval) {
@@ -1157,17 +1216,41 @@
 				moveDelay = 0;
 				shapes.every(shape => shape.moveRight());
 				moveInterval = setInterval(() => {
-					if (moveDelay >= 80 / 40) {
+					if (moveDelay >= 2) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveRight());
 						}
 					}
 					moveDelay++;
-				}, 40);
+				}, 50);
 			}
-		} else if (e.key === "ArrowDown") {
-			moveDownABit(e.shiftKey);
-		} else if (e.key === "ArrowUp") {
+		} else if (e.code === "KeyL") {
+			if (!moveInterval || moveSide === "left") {
+				if (moveInterval) {
+					clearInterval(moveInterval);
+				}
+				moveSide = "right";
+				moveDelay = 0;
+				shapes.every(shape => shape.moveRight());
+				// shapes.every(shape => shape.moveRight());
+				moveInterval = setInterval(() => {
+					if (moveDelay >= 2) {
+						if (!gameOver) {
+							shapes.every(shape => shape.moveRight());
+							// shapes.every(shape => shape.moveRight());
+						}
+					}
+					moveDelay++;
+				}, 33.3);
+			}
+		} else if (e.key === "ArrowDown" || e.code === "KeyK") {
+			if (e.shiftKey) {
+				moveDownABit(e.shiftKey);
+				e.preventDefault();
+			} else if (e.code === "KeyK") {
+				shapes.every(shape => shape.moveRight());
+			}
+		} else if (e.key === "ArrowUp" || e.code === "KeyI") {
 			shapes.every(shape => shape.rotateRight());
 		} else if (e.key === "p" || e.key === "Escape") {
 			if (stepTimeout) {
@@ -1178,19 +1261,19 @@
 				document.querySelector("#pause_status").innerText = "";
 				stepTimeout = setTimeout(step, step_interval);
 			}
-		} else if (e.key === "z") {
+		} else if (e.code === "KeyZ") {
 			shapes.every(shape => shape.rotateRight());
-		} else if (e.key === "x") {
+		} else if (e.code === "KeyX") {
 			shapes.every(shape => shape.rotateLeft());
-		} else if (e.key === "c") {
+		} else if (e.code === "KeyC") {
 			performHold();
-		} else if (e.code === "Space" || e.ctrlKey) {
+		} else if (e.code === "Space" /* || e.ctrlKey */) {
 			moveDownABit(true);
 		}
 	};
 
 	window.onkeyup = (e) => {
-		if (e.key === "ArrowLeft") {
+		if (e.key === "ArrowLeft" || e.code === "KeyJ") {
 			if (moveSide === "left") {
 				clearInterval(moveInterval);
 				moveInterval = undefined;
@@ -1199,7 +1282,7 @@
 			}
 		}
 		
-		if (e.key === "ArrowRight") {
+		if (e.key === "ArrowRight" || e.code === "KeyL") {
 			if (moveSide === "right") {
 				clearInterval(moveInterval);
 				moveInterval = undefined;
@@ -1382,7 +1465,7 @@ input:checked + .slider:before {
 </style>
 
 <div class="footer">
-	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.5)</span></p>
+	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.6)</span></p>
 	<a href="https://github.com/davidcallanan/2048-tetris" target="_blank"><div class="vog">
 		View on GitHub
 	</div></a>

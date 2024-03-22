@@ -1,5 +1,17 @@
 # Changelog
 
+# 0.1.6
+
+ - Rearrange and simplify UI.
+ - Remove CTRL key for insta-drop.
+ - Add fast-movement controls.
+ - Add single-step controls.
+ - Slow down speed increases.
+ - Auto-blur input elements to prevent gameplay interruption.
+ - Fix website scrolling when using arrow keys.
+ - Fix mouse moving pieces when outside canvas.
+ - Fix controls when caps lock.
+
 # 0.1.5
 
  - Mobile touch support improved.
