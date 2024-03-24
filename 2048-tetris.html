@@ -132,7 +132,7 @@
 	};
 
 	setInterval(() => {
-		if (!document.activeElement?.classList.has("no-blurrr")) {
+		if (!document.activeElement?.classList.contains("no-blurrr")) {
 			document.activeElement?.blur();
 		}
 	}, 100);
@@ -1242,7 +1242,8 @@
 				}
 				moveSide = "left";
 				moveDelay = 0;
-				shapes.every(shape => shape.moveLeft());
+				const times = e.shiftKey ? 10 : 1;
+				for (let i = 0; i < times; i++) shapes.every(shape => shape.moveLeft());
 				moveInterval = setInterval(() => {
 					if (moveDelay >= parseInt(window.localStorage.getItem("2048-tetris-arrows-das"))) {
 						if (!gameOver) {
@@ -1259,13 +1260,12 @@
 				}
 				moveSide = "left";
 				moveDelay = 0;
-				shapes.every(shape => shape.moveLeft());
-				// shapes.every(shape => shape.moveLeft());
+				const times = e.shiftKey ? 10 : 1;
+				for (let i = 0; i < times; i++) shapes.every(shape => shape.moveLeft());
 				moveInterval = setInterval(() => {
 					if (moveDelay >= window.localStorage.getItem("2048-tetris-jl-das")) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveLeft());
-							// shapes.every(shape => shape.moveLeft());
 						}
 					}
 					moveDelay++;
@@ -1280,7 +1280,8 @@
 				}
 				moveSide = "right";
 				moveDelay = 0;
-				shapes.every(shape => shape.moveRight());
+				const times = e.shiftKey ? 10 : 1;
+				for (let i = 0; i < times; i++) shapes.every(shape => shape.moveRight());
 				moveInterval = setInterval(() => {
 					if (moveDelay >= parseInt(window.localStorage.getItem("2048-tetris-arrows-das"))) {
 						if (!gameOver) {
@@ -1297,22 +1298,24 @@
 				}
 				moveSide = "right";
 				moveDelay = 0;
-				shapes.every(shape => shape.moveRight());
-				// shapes.every(shape => shape.moveRight());
+				const times = e.shiftKey ? 10 : 1;
+				for (let i = 0; i < times; i++) shapes.every(shape => shape.moveRight());
 				moveInterval = setInterval(() => {
 					if (moveDelay >= window.localStorage.getItem("2048-tetris-jl-das")) {
 						if (!gameOver) {
 							shapes.every(shape => shape.moveRight());
-							// shapes.every(shape => shape.moveRight());
 						}
 					}
 					moveDelay++;
 				}, window.localStorage.getItem("2048-tetris-jl-arr"));
 			}
 		} else if (e.key === "ArrowDown" || e.code === "KeyK") {
-			if (e.shiftKey) {
-				moveDownABit(e.shiftKey);
+			if (e.key === "ArrowDown") {
 				e.preventDefault();
+			}
+
+			if (e.shiftKey || e.code === "ArrowDown") {
+				moveDownABit(e.shiftKey);
 			} else if (e.code === "KeyK") {
 				shapes.every(shape => shape.moveRight());
 			}
@@ -1333,7 +1336,8 @@
 			shapes.every(shape => shape.rotateLeft());
 		} else if (e.code === "KeyC") {
 			performHold();
-		} else if (e.code === "Space" /* || e.ctrlKey */) {
+		} else if (e.code === "Space") {
+			e.preventDefault();
 			moveDownABit(true);
 		}
 	};
@@ -1406,8 +1410,6 @@
 	.upcoming_and_hold {
 		position: fixed;
 		top: 0.5rem;
-		/* left: 23.5rem; */
-		/* left: calc(50% + 23.5rem - 21.875rem - 1px); */
 		left: calc(50% + 23.5rem - 21.875rem - 1px - 1rem);
 		width: 15.25rem;
 		height: 10.5rem;
@@ -1418,8 +1420,6 @@
 	.upcoming_and_hold-text {
 		position: fixed;
 		top: 0.5rem;
-		/* left: 23.5rem; */
-		/* left: calc(50% + 23.5rem - 21.875rem - 1px); */
 		left: calc(50% + 23.5rem - 21.875rem - 1px - 1rem);
 		width: 15.25rem;
 		height: 10.5rem;
@@ -1535,7 +1535,7 @@ input:checked + .slider:before {
 </style>
 
 <div class="footer">
-	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.7)</span></p>
+	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.8)</span></p>
 	<a href="https://github.com/davidcallanan/2048-tetris" target="_blank"><div class="vog">
 		View on GitHub
 	</div></a>

@@ -1,5 +1,10 @@
 # Changelog
 
+# 0.1.8
+
+ - Add sideways shift modifier for movement.
+ - Fix UI bugs.
+
 # 0.1.7
 
  - Add settings for DAS and ARR.
