@@ -1,3 +1,5 @@
+<title> 2048 Tetris </title>
+
 <div style="display: flex; flex-direction: column; align-items: center;">
 <div>
 
@@ -81,6 +83,31 @@
 </div>
 
 <script>
+
+	class VsyncFixedScheduler {
+		constructor(fps, callback) {
+			this.fps = fps;
+			this.callback = callback;
+			this.dt = 1000 / fps;
+			this.last_update_time = performance.now();
+			this.borrowed_dt = 0;
+		}
+
+		render() {
+			const now = performance.now();
+			let dt = now - this.last_update_time;
+
+			while (dt >= this.dt) {
+				dt -= this.dt;
+				this.last_update_time += this.dt;
+				this.callback(this.dt);
+			}
+		}
+	}
+
+	const vfs = new VsyncFixedScheduler(120, () => {
+		update();
+	});
 
 	const toggleControlsOrMechanics = () => {
 		document.querySelector("#settings").style.display = "none";
@@ -728,13 +755,6 @@
 
 	let stepTimeout;
 
-	let stepImmediately = () => {
-		if (stepTimeout) {
-			clearInterval(stepTimeout);
-		}
-		step();
-	};
-
 	let main = () => {
 		if (!window.localStorage.getItem("2048-tetris-arrows-das")) {
 			resetSettings();
@@ -750,7 +770,8 @@
 		canvas2 = document.querySelector(".upcoming_and_hold");
 		ctx2 = canvas2.getContext("2d");
 		window.requestAnimationFrame(loop);
-		stepTimeout = setTimeout(step, step_interval);
+		// stepTimeout = setTimeout(step, step_interval);
+		stepTimeout = true;
 		document.getElementById("highscore_status").innerText = "Highscore: " + Number(window.localStorage.getItem("2048-tetris-highscore") || "0");
 		
 		let mouseDownTime;
@@ -870,6 +891,8 @@
 	let highlightedRows = new Map();
 
 	let loop = () => {
+		vfs.render();
+
 		if (darkMode) {
 			ctx.fillStyle = "#776A60"
 			ctx.fillStyle = "#123456"
@@ -972,6 +995,42 @@
 	let detect_conversion_next_frame = false;
 	
 	let preventHoldSwapping = 0;
+
+	let frame_buildup = 0;
+
+	let update = () => {
+		if (stepTimeout === undefined) {
+			return;
+		}
+
+		frame_buildup++;
+		const target_frame_buildup = Math.round(real_step_interval / 1000 * 120);
+
+		console.log(frame_buildup, target_frame_buildup);
+		if (frame_buildup >= target_frame_buildup) {
+			frame_buildup -= target_frame_buildup;
+			step();
+		}
+	};
+
+	let stepImmediately = (smart_reduce_buildup) => {
+		// if (stepTimeout) {
+		// 	clearInterval(stepTimeout);
+		// }
+
+		stepTimeout = true;
+
+		const target_frame_buildup = Math.round(real_step_interval / 1000 * 120);
+		
+		if (smart_reduce_buildup) {
+			const floor = Math.min(frame_buildup, 0);
+			frame_buildup = Math.max(floor, frame_buildup - target_frame_buildup);
+		} else {
+			frame_buildup -= target_frame_buildup;
+		}
+
+		step();
+	};
 
 	let step = () => {
 		if (gameOver) {
@@ -1178,9 +1237,7 @@
 			if (shape.shouldConvert()) {
 				detect_conversion = true;
 			}
-		}		
-
-		stepTimeout = setTimeout(step, step_interval);
+		}
 	};
 
 	let moveInterval;
@@ -1196,17 +1253,19 @@
 					if (gameOver) {
 						break;
 					}
-					clearTimeout(stepTimeout);
-					step();
+					// clearTimeout(stepTimeout);
+					// step();
+					stepImmediately(true);
 				}
 			} else {
-				clearTimeout(stepTimeout);
-				step();
+				// clearTimeout(stepTimeout);
+				// step();
+				stepImmediately();
 			}
 
 			detect_conversion = false;
 		} else {
-			step();
+			stepImmediately();
 		}
 	};
 
@@ -1324,11 +1383,12 @@
 		} else if (e.key === "p" || e.key === "Escape") {
 			if (stepTimeout) {
 				document.querySelector("#pause_status").innerText = "The game is paused (press 'p' to unpause)";
-				clearTimeout(stepTimeout);
+				// clearTimeout(stepTimeout);
 				stepTimeout = undefined;
 			} else {
 				document.querySelector("#pause_status").innerText = "";
-				stepTimeout = setTimeout(step, step_interval);
+				// stepTimeout = setTimeout(step, step_interval);
+				stepTimeout = true;
 			}
 		} else if (e.code === "KeyZ") {
 			shapes.every(shape => shape.rotateRight());
@@ -1535,7 +1595,7 @@ input:checked + .slider:before {
 </style>
 
 <div class="footer">
-	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.8)</span></p>
+	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.9)</span></p>
 	<a href="https://github.com/davidcallanan/2048-tetris" target="_blank"><div class="vog">
 		View on GitHub
 	</div></a>

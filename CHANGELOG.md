@@ -1,5 +1,10 @@
 # Changelog
 
+# 0.1.9
+ 
+ - Game logic now runs at 120 fixed updates per second.
+ - Game logic is now vsynced to improve input responsivness and consistency.
+
 # 0.1.8
 
  - Add sideways shift modifier for movement.
