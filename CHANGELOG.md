@@ -1,5 +1,10 @@
 # Changelog
 
+# 0.1.10
+
+ - Fix insta-drop not working when shape initially spawns.
+ - Fix down movement not registered as passing time.
+
 # 0.1.9
  
  - Game logic now runs at 120 fixed updates per second.

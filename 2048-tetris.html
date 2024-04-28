@@ -784,7 +784,6 @@
 		};
 
 		canvas.onpointerup = (e) => {
-			console.log(e);
 			if (Date.now() - mouseDownTime < 500) {
 				moveDownABit(true);
 				followMouseOnNextSpawn = true;
@@ -795,7 +794,6 @@
 		};
 
 		canvas.oncontextmenu = (e) => {
-			console.log(e);
 			performHold();
 			e.preventDefault();
 			followMouseOnNextSpawn = true;
@@ -812,7 +810,6 @@
 		};
 		
 		let touchmove = (e) => {
-			console.log(e);
 			let touch = e.touches[0] || e.changedTouches[0];
 			p = getCanvasMousePos({
 				clientX: touch.pageX,
@@ -867,7 +864,6 @@
 		}
 
 		let i = Math.max(Math.min(Math.floor(p.x / 363.33 * 10), 9), 0);
-		console.log(i);
 
 		if (shapes[0]) {
 			let shape = shapes[0];
@@ -1006,7 +1002,7 @@
 		frame_buildup++;
 		const target_frame_buildup = Math.round(real_step_interval / 1000 * 120);
 
-		console.log(frame_buildup, target_frame_buildup);
+		// console.log(frame_buildup, target_frame_buildup);
 		if (frame_buildup >= target_frame_buildup) {
 			frame_buildup -= target_frame_buildup;
 			step();
@@ -1209,6 +1205,7 @@
 			let shape = makeNewShapeMode == "new" ? new Shape() : makeNewShapeMode;
 			makeNewShape = false;
 			makeNewShapeMode = "new";
+			new_shape_occurred__moveDownABit = true;
 			detect_conversion_next_frame = true;
 			if (!shape.checkOK()) {
 				shape.y--;
@@ -1245,27 +1242,36 @@
 	let moveDelay;
 	let downInterval;
 
+	let new_shape_occurred__moveDownABit = false;
+
 	let moveDownABit = (shiftKey) => {
+		new_shape_occurred__moveDownABit = false;
+
 		document.querySelector("#pause_status").innerText = "";
 		if (stepTimeout) {
 			if (shiftKey) {
-				while (!detect_conversion) {
+				while (!detect_conversion || detect_conversion_next_frame) {
 					if (gameOver) {
 						break;
 					}
 					// clearTimeout(stepTimeout);
 					// step();
 					stepImmediately(true);
+
+					if (new_shape_occurred__moveDownABit) {
+						new_shape_occurred__moveDownABit = false;
+						break;
+					}
 				}
 			} else {
 				// clearTimeout(stepTimeout);
 				// step();
-				stepImmediately();
+				stepImmediately(true);
 			}
 
 			detect_conversion = false;
 		} else {
-			stepImmediately();
+			stepImmediately(true);
 		}
 	};
 
@@ -1595,7 +1601,7 @@ input:checked + .slider:before {
 </style>
 
 <div class="footer">
-	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.9)</span></p>
+	<p>2048 Tetris <small><i>by David P. Callanan</i></small> <span style="width: 0.25rem; display: inline-block;"></span> <span class="version">(version 0.1.10)</span></p>
 	<a href="https://github.com/davidcallanan/2048-tetris" target="_blank"><div class="vog">
 		View on GitHub
 	</div></a>
